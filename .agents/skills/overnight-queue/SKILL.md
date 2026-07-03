@@ -15,4 +15,4 @@ Full mechanics (pacing formula, retry/backoff rules, worktree/commit conventions
 2. Confirm `queue/*.md` has at least one pending task. If `queue/` doesn't exist yet, create `queue/`, `queue/done/`, `queue/failed/`, `queue/failed-exhausted/`.
 3. Read `references/design.md` before editing either script, to stay consistent with the pacing/retry/worktree design already decided.
 4. Run `scripts/run-queue.sh --until "<stop time>" --max-retries <N>` (default `--max-retries` is 3) to start the overnight run.
-5. In the morning, review `queue/run.log` and the commits on the `overnight-queue/<run-timestamp>` branch inside `.worktrees/overnight-queue/` for what happened.
+5. In the morning, review `queue/run.log` and the commits on each task's own `overnight-queue/<run-timestamp>/<task-slug>` branch (one branch per successful task; `git branch --list 'overnight-queue/<run-timestamp>/*'` lists them all) for what happened.

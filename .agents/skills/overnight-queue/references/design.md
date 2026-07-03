@@ -11,12 +11,14 @@ That iterate-with-accumulated-context loop is not used here for the primary pass
 
 What is borrowed from `gnhf`: git worktree isolation and commit-on-success / `git reset --hard`-on-failure as the per-task checkpoint mechanism.
 This is orthogonal to attempt count.
-One worktree is created per run, not per task, and reused sequentially across all tasks, since this run is deliberately sequential (concurrent workers would defeat pacing across a fixed time budget).
+A fresh worktree and branch are created per *task* (not per run) and torn down immediately after, all forked from the same base commit captured once at run start (`$BASE_SHA`), so no task can ever see another task's leftover changes.
+Tasks still run sequentially, not concurrently (concurrent workers would defeat pacing across a fixed time budget) -- the isolation is about correctness (no cross-task contamination), not parallelism.
+This was originally one shared worktree/branch reused across the whole run; changed 2026-07-03 once live testing showed it left later tasks running in a worktree that already contained earlier tasks' committed changes, contradicting the "each task is self-contained" assumption above. Measured overhead of the extra per-task `git worktree add`/`remove` cycle: ~80-120ms inside the container, versus several seconds of actual task runtime -- negligible.
 
 ## Isolation: Docker plus worktree, not either/or
 
 Docker (`docker-sandbox/`) is the network/filesystem containment layer, the hard backstop for an unattended session with nobody watching, decided earlier in `sandbox_automode_plan.md` and `docker_sandbox_plan.md`.
-The git worktree plus commit/rollback is a separate concern: a clean per-task checkpoint and undo mechanism, and morning reviewability via `git log` on the run's branch.
+The git worktree plus commit/rollback is a separate concern: a clean per-task checkpoint and undo mechanism, and morning reviewability via `git log` on each task's own branch.
 Both are used together, one inside the other.
 
 ## Pacing, without real usage/quota introspection
@@ -38,8 +40,8 @@ It does not overshoot to try to finish "just one more."
 ## Primary phase vs. secondary (retry) phase
 
 Primary phase: one pass over `queue/*.md`.
-On success, commit and move to `queue/done/`.
-On a genuine failure (not rate-limit-shaped), `git reset --hard` back to the pre-task commit, move the task to `queue/failed/` with attempt count 1, and continue — it is not retried inline, so one broken task cannot stall the rest of the primary pass.
+On success, commit (on that task's own fresh branch) and move to `queue/done/`.
+On a genuine failure (not rate-limit-shaped), `git reset --hard` back to `$BASE_SHA`, delete that task's branch (it holds nothing unique -- identical to `$BASE_SHA`), move the task to `queue/failed/` with attempt count 1, and continue — it is not retried inline, so one broken task cannot stall the rest of the primary pass.
 
 Secondary phase: only triggered if the primary pass empties `queue/*.md` before `--until`.
 Retries `queue/failed/` items with spare time rather than idling.
@@ -70,7 +72,9 @@ This is one of the two legitimate documented uses of that flag — an isolated c
 
 ## Worktree and branch conventions
 
-- Worktree path: `/workspace/.worktrees/overnight-queue` inside the container (add `.worktrees/` to `.gitignore`).
-- Branch: `overnight-queue/<run-timestamp>`, created once per run, all tasks in that run commit sequentially onto it.
+- Worktree path: `/workspace/.worktrees/overnight-queue` inside the container (add `.worktrees/` to `.gitignore`). One fixed path, reused across tasks, but fully torn down (`git worktree remove --force`, `rm -rf`, `git worktree prune`) and recreated fresh for every single task -- never reused as-is between tasks.
+- Branch: `overnight-queue/<run-timestamp>/<task-slug>`, one per task, created fresh from `$BASE_SHA` (the commit that was `HEAD` when the run started) right before that task runs, and left in place afterward only if the task succeeded.
+- A failed task's branch is deleted immediately (`git branch -D`) since it has no commits beyond `$BASE_SHA` and holds nothing worth keeping. Only successful tasks leave a branch behind to review.
 - Commit message: `<task filename>: <one-line summary>`.
-- Rollback: `git reset --hard "$pre_sha"`, where `pre_sha` is captured immediately before that task's attempt, so a bad attempt only discards that task's own changes, not the whole run's prior work.
+- Rollback: `git reset --hard "$pre_sha"` inside `run_attempt`, where `pre_sha` is that task's own `$BASE_SHA` (since every task's worktree starts there), so a bad attempt only discards that task's own changes -- moot in practice now since the whole worktree is torn down right after anyway, but kept for clarity/defense in depth.
+- To find everything from one run: `git branch --list 'overnight-queue/<run-timestamp>/*'`. `queue/run.log` also records each task's branch name next to its done/failed line.

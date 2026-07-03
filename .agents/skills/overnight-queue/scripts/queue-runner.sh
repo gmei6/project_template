@@ -17,7 +17,6 @@ LOG="$QUEUE_DIR/run.log"
 WORKTREE_DIR="$PROJECT_ROOT/.worktrees/overnight-queue"
 ATTEMPTS_DIR="$QUEUE_DIR/.attempts"
 RUN_TS="$(date +%Y%m%d-%H%M%S)"
-BRANCH="overnight-queue/$RUN_TS"
 
 UNTIL=""
 MAX_RETRIES=3
@@ -50,8 +49,8 @@ log() {
   echo "[$(date -Iseconds)] $*" | tee -a "$LOG"
 }
 
-# --- one-time setup: worktree + branch, reused sequentially for the whole run ---
-setup_worktree() {
+# --- one-time repo prep: not a worktree/branch (that's per-task now) ---
+bootstrap_repo() {
   # git worktree add -b needs a real commit to branch from. Some git versions
   # (e.g. 2.39, this container's) do not infer --orphan on an unborn HEAD the
   # way newer git does, and fail outright instead. Bootstrap with an empty
@@ -59,22 +58,42 @@ setup_worktree() {
   if ! git -C "$PROJECT_ROOT" rev-parse HEAD >/dev/null 2>&1; then
     git -C "$PROJECT_ROOT" commit --allow-empty -m "overnight-queue: bootstrap initial commit" >>"$LOG" 2>&1
   fi
-  # A worktree directory can exist on disk while being unregistered/stale --
-  # e.g. a host-side `git worktree remove` can't fully resolve a worktree
-  # whose .git file was written by this container (absolute container path),
-  # leaving the checkout behind with a dangling gitdir. Detect that and
-  # rebuild rather than reusing a broken checkout.
-  if [ -d "$WORKTREE_DIR" ] && ! git -C "$WORKTREE_DIR" rev-parse --git-dir >/dev/null 2>&1; then
-    log "setup_worktree: found stale/broken worktree at $WORKTREE_DIR, rebuilding"
-    rm -rf "$WORKTREE_DIR"
-    git -C "$PROJECT_ROOT" worktree prune >>"$LOG" 2>&1
-  fi
-  if [ ! -d "$WORKTREE_DIR" ]; then
-    git -C "$PROJECT_ROOT" worktree add "$WORKTREE_DIR" -b "$BRANCH" >>"$LOG" 2>&1
-  fi
+  # Every task's worktree forks from this same commit, captured once, so no
+  # task can ever see another task's changes -- true per-task isolation.
+  BASE_SHA="$(git -C "$PROJECT_ROOT" rev-parse HEAD)"
   if ! grep -qxF ".worktrees/" "$PROJECT_ROOT/.gitignore" 2>/dev/null; then
     echo ".worktrees/" >> "$PROJECT_ROOT/.gitignore"
   fi
+}
+
+# --- per-task worktree + branch lifecycle ---
+task_branch_name() {
+  # Simplifying assumption: task filenames within one run are unique, so
+  # collisions after sanitizing are not handled specially.
+  local slug
+  slug=$(printf '%s' "${1%.md}" | tr -c 'A-Za-z0-9_.-' '-')
+  printf 'overnight-queue/%s/%s' "$RUN_TS" "$slug"
+}
+
+setup_task_worktree() {
+  local branch="$1"
+  # Always tear down any leftover before creating a fresh one -- covers both
+  # a normal previous task's worktree and a stale/broken one (e.g. a
+  # host-side `git worktree remove` that couldn't fully resolve a worktree
+  # whose .git file was written by this container, using an absolute
+  # container path). rm -rf plus prune cleans up either case unconditionally.
+  if [ -d "$WORKTREE_DIR" ]; then
+    git -C "$PROJECT_ROOT" worktree remove --force "$WORKTREE_DIR" >>"$LOG" 2>&1
+    rm -rf "$WORKTREE_DIR"
+    git -C "$PROJECT_ROOT" worktree prune >>"$LOG" 2>&1
+  fi
+  git -C "$PROJECT_ROOT" worktree add "$WORKTREE_DIR" -b "$branch" "$BASE_SHA" >>"$LOG" 2>&1
+}
+
+teardown_task_worktree() {
+  git -C "$PROJECT_ROOT" worktree remove --force "$WORKTREE_DIR" >>"$LOG" 2>&1
+  rm -rf "$WORKTREE_DIR"
+  git -C "$PROJECT_ROOT" worktree prune >>"$LOG" 2>&1
 }
 
 # --- attempt-count bookkeeping (attempt count lives in $ATTEMPTS_DIR/<basename>) ---
@@ -126,6 +145,28 @@ commit_task() {
   fi
 }
 
+# --- orchestrates one full task attempt: fresh worktree+branch, run, commit
+# or discard, always tear the worktree back down. Sets ATTEMPT_OK,
+# ATTEMPT_OUTPUT (from run_attempt) and TASK_BRANCH as globals. TASK_BRANCH
+# only has surviving commits when ATTEMPT_OK=1 -- a failed attempt's branch
+# is deleted since it's identical to $BASE_SHA and holds nothing unique. ---
+run_task() {
+  local task_name="$1"
+  local prompt="$2"
+
+  TASK_BRANCH="$(task_branch_name "$task_name")"
+  setup_task_worktree "$TASK_BRANCH"
+  run_attempt "$prompt"
+
+  if [ "$ATTEMPT_OK" -eq 1 ]; then
+    commit_task "$task_name"
+  fi
+  teardown_task_worktree
+  if [ "$ATTEMPT_OK" -ne 1 ]; then
+    git -C "$PROJECT_ROOT" branch -D "$TASK_BRANCH" >>"$LOG" 2>&1
+  fi
+}
+
 extract_usage_summary() {
   # Defensive: exact JSON field names for cost/usage are unconfirmed. Best effort only.
   printf '%s' "$1" | jq -r '
@@ -163,13 +204,12 @@ primary_phase() {
     task_name=$(basename "$task")
 
     local start=$(now_epoch)
-    run_attempt "$(cat "$task")"
+    run_task "$task_name" "$(cat "$task")"
     local elapsed=$(( $(now_epoch) - start ))
 
     if [ "$ATTEMPT_OK" -eq 1 ]; then
-      commit_task "$task_name"
       mv "$task" "$DONE_DIR/"
-      log "primary: $task_name done ($(extract_usage_summary "$ATTEMPT_OUTPUT"), ${elapsed}s)"
+      log "primary: $task_name done ($(extract_usage_summary "$ATTEMPT_OUTPUT"), ${elapsed}s, branch=$TASK_BRANCH)"
     elif looks_rate_limited "$ATTEMPT_OUTPUT"; then
       log "primary: $task_name rate-limited, backing off"
       backoff_then_check_deadline || return 1
@@ -258,13 +298,12 @@ Previous attempt failed with the following error, take it into account this time
 $prior_error"
 
     local start=$(now_epoch)
-    run_attempt "$prompt"
+    run_task "$task_name" "$prompt"
     local elapsed=$(( $(now_epoch) - start ))
 
     if [ "$ATTEMPT_OK" -eq 1 ]; then
-      commit_task "$task_name"
       mv "$task" "$DONE_DIR/"
-      log "retry: $task_name done ($(extract_usage_summary "$ATTEMPT_OUTPUT"), ${elapsed}s)"
+      log "retry: $task_name done ($(extract_usage_summary "$ATTEMPT_OUTPUT"), ${elapsed}s, branch=$TASK_BRANCH)"
     elif looks_rate_limited "$ATTEMPT_OUTPUT"; then
       log "retry: $task_name rate-limited, backing off"
       backoff_then_check_deadline || return 1
@@ -300,12 +339,12 @@ summarize() {
   done_n=$(find "$DONE_DIR" -name '*.md' -type f 2>/dev/null | grep -c . || true)
   failed_n=$(find "$FAILED_DIR" -name '*.md' -type f 2>/dev/null | grep -c . || true)
   exhausted_n=$(find "$EXHAUSTED_DIR" -name '*.md' -type f 2>/dev/null | grep -c . || true)
-  log "summary: done=$done_n failed=$failed_n exhausted=$exhausted_n branch=$BRANCH"
+  log "summary: done=$done_n failed=$failed_n exhausted=$exhausted_n branches=overnight-queue/$RUN_TS/*"
 }
 
 main() {
   log "run start: until=$UNTIL max_retries=$MAX_RETRIES"
-  setup_worktree
+  bootstrap_repo
   if primary_phase; then
     secondary_phase || true
   fi
