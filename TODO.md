@@ -156,13 +156,20 @@ Progress so far:
 
 ### Next steps
 
-- [ ] Gary to create the `.claude/skills/overnight-queue` symlink manually (my sandbox denies writes under `.claude/skills/`): `ln -s ../../.agents/skills/overnight-queue .claude/skills/overnight-queue`.
-- [ ] Rename the project folder to `project_template` (in progress, blocked on my end since my sandbox has no access to the parent directory), then run `/cd` in-session to follow the rename without losing conversation history.
-- [ ] Push to `https://github.com/gmei6/project_template` (`git remote add origin ... && git branch -M main && git push -u origin main`).
-- [ ] Confirm Docker Desktop is running.
-- [ ] Seed `queue/` with throwaway test tasks (including one deliberately broken) and run an end-to-end verification of `run-queue.sh`.
-- [ ] Confirm during that verification whether `--model haiku` combined with `--permission-mode auto` keeps auto mode genuinely active; fall back to `--permission-mode bypassPermissions` for this skill specifically if not (documented Plan B, contained inside the Docker sandbox).
-- [ ] Log the outcome in `CHANGELOG.md` once verification passes.
+- [x] Gary created the `.claude/skills/overnight-queue` symlink manually.
+- [x] Renamed the project folder to `project_template` and pushed to `https://github.com/gmei6/project_template`.
+- [x] Confirmed Docker Desktop is running.
+- [x] Seeded `queue/` with throwaway test tasks (one file-creating, one deliberately broken) and ran an end-to-end verification of `run-queue.sh`.
+  Found and fixed three bugs along the way: missing `--settings /home/node/container-settings.json` flag (caused an immediate sandbox-unavailable failure), `--permission-mode auto` silently denying all writes in headless mode (masked as success since `claude` still exits 0), and no git identity configured in the container (masked as success since `commit_task()` didn't check the exit code). Full detail in `CHANGELOG.md` 2026-07-03.
+- [x] Confirmed `--model haiku` combined with `--permission-mode auto` does **not** keep auto mode genuinely active in headless `-p` sessions -- it silently no-ops every write.
+  Switched to `--permission-mode bypassPermissions` (documented Plan B in `references/design.md`), confirmed via live test that it actually performs writes and commits, safely contained by the Docker sandbox's own filesystem/network boundaries.
+- [x] Logged the outcome in `CHANGELOG.md` (2026-07-03 entry).
+
+**Note**: the "deliberately broken" test task (`exit 1`) doesn't actually exercise the failure-handling path -- `claude -p` reports success/exits 0 regardless of a shell command's own exit code inside the task. If failure-handling behavior needs real verification later, seed a task that causes the `claude` process itself to fail or produce an error result, not one that just runs a failing shell command.
+
+**Status: closed (2026-07-03).**
+All setup and verification steps for this item are complete: symlink, folder rename, GitHub push, and Docker Desktop confirmed; end-to-end run verified with three bugs found and fixed (missing `--settings` flag, non-functional headless auto mode, missing git identity); outcome logged in `CHANGELOG.md`.
+The one caveat, the broken-test-task design gap, is documented as a note for future test design rather than a blocking issue.
 
 ## Fill in real content for `session-start` and `session-wrapup` skills
 

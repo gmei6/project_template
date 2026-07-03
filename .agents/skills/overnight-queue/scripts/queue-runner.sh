@@ -93,7 +93,7 @@ run_attempt() {
   pre_sha="$(git -C "$WORKTREE_DIR" rev-parse HEAD)"
 
   local out
-  out="$(cd "$WORKTREE_DIR" && claude -p "$prompt" --model haiku --permission-mode auto --output-format json 2>&1)"
+  out="$(cd "$WORKTREE_DIR" && claude --settings /home/node/container-settings.json -p "$prompt" --model haiku --permission-mode bypassPermissions --output-format json 2>&1)"
   local exit_code=$?
 
   ATTEMPT_OUTPUT="$out"
@@ -110,7 +110,9 @@ commit_task() {
   local task_name="$1"
   git -C "$WORKTREE_DIR" add -A
   if ! git -C "$WORKTREE_DIR" diff --cached --quiet; then
-    git -C "$WORKTREE_DIR" commit -q -m "$task_name: completed by overnight-queue"
+    if ! git -C "$WORKTREE_DIR" commit -q -m "$task_name: completed by overnight-queue" 2>>"$LOG"; then
+      log "WARNING: $task_name reported done but commit failed (see error above) -- changes are staged but uncommitted"
+    fi
   fi
 }
 

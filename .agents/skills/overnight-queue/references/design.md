@@ -58,15 +58,15 @@ This distinction exists because rate limits are not the task's fault and it woul
 Neither Claude Code's exact rate-limit exit code/stderr format nor its 5-hour-window reset behavior is documented as of this writing, so this detection is a best-effort pattern match, not a guaranteed signal.
 If this proves unreliable in practice, the fallback is to treat all failures as genuine task failures (skip to `queue/failed/`) and let time-based pacing alone prevent hitting the limit in the first place.
 
-## Open risk: `--model haiku` combined with `--permission-mode auto`
+## Resolved: `--model haiku` combined with `--permission-mode auto` does not work headlessly
 
-The permission classifier itself runs on a separate server-side model, independent of `--model` (confirmed via Claude Code documentation research).
-However, auto mode has an account-level prerequisite (Opus 4.6+/Sonnet 4.6+ availability per `sandbox_automode_plan.md`), and it is unconfirmed whether forcing `--model haiku` for the task disqualifies that specific session from auto mode.
-The first live task of any real run is the empirical check: confirm auto mode is genuinely active, not silently degraded to full prompting (which would stall an unattended run) or silently bypassed.
+Confirmed by live test 2026-07-03: in headless `-p` mode there is no human to answer the classifier's approval prompt, so every actual file write is denied (`permission_denials` populated in the JSON output, e.g. `Write` on the target file) and the agent turn ends with `"result": "...need your permission to write..."`.
+Critically, the `claude` process still exits 0 and reports `"subtype":"success","is_error":false"` — so `queue-runner.sh`'s exit-code-based success check saw this as a completed task even though nothing was written or committed (the two seeded test tasks were marked "done" in `queue/run.log` despite `git log` on the run's branch showing no new commits).
+This is not a haiku-specific issue; it's `--permission-mode auto` having no effect in a fully headless, unattended session.
 
-**Plan B**, only if that risk turns out real: fall back to `--permission-mode bypassPermissions` for this skill specifically.
-This is one of the two legitimate documented uses of that flag, an isolated container Claude cannot escape, not a shortcut around the containment decision.
-Auto mode stays the default in the script; this is a documented escape hatch, not something silently baked in.
+**Plan B is now the default**: `queue-runner.sh` uses `--permission-mode bypassPermissions`.
+Confirmed via the same live test: with `bypassPermissions`, `permission_denials` is empty and the file is actually created.
+This is one of the two legitimate documented uses of that flag — an isolated container Claude cannot escape (no host filesystem access beyond the bind-mounted project, no network beyond `api.anthropic.com`) — not a shortcut around the containment decision.
 
 ## Worktree and branch conventions
 

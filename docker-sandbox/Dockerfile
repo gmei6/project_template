@@ -57,6 +57,12 @@ RUN ARCH=$(dpkg --print-architecture) && \
 # Set up non-root user
 USER node
 
+# Default git identity for commits made inside the container (e.g. by
+# overnight-queue's queue-runner.sh). Without this, `git commit` fails with
+# "Author identity unknown" since host git config isn't mounted in.
+RUN git config --global user.name "claude-sandbox" && \
+  git config --global user.email "claude-sandbox@localhost"
+
 # Install global packages
 ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
 ENV PATH=$PATH:/usr/local/share/npm-global/bin

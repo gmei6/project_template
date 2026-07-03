@@ -2,6 +2,14 @@
 
 ## 2026-07-03
 
+### Fixed
+
+- Ran the first end-to-end verification of the `overnight-queue` skill's `run-queue.sh`/`queue-runner.sh` against a real Docker sandbox run (two seeded throwaway test tasks), and found/fixed three bugs that had made every prior test appear to fail or silently misreport success:
+  - `queue-runner.sh`'s `claude` invocation was missing `--settings /home/node/container-settings.json`, so it inherited the host project's `sandbox.enabled=true` into a container with no bubblewrap/socat, refusing to start. Added the flag, matching `docker-sandbox/run.sh`'s existing pattern.
+  - `--permission-mode auto` does not work in headless `-p` sessions: there's no human to answer the classifier's approval prompt, so every real file write was silently denied (confirmed via `permission_denials` in the JSON output) while the `claude` process still exited 0 and reported `"is_error":false`. `queue-runner.sh`'s exit-code-based success check couldn't detect this, so tasks that wrote nothing were marked "done". Switched to `--permission-mode bypassPermissions` (the documented Plan B in `references/design.md`), confirmed via the same test that it actually performs the write.
+  - The container had no git identity configured, so every `commit_task()` call failed silently ("Author identity unknown"), meaning no task's changes were ever actually committed despite being logged as "done". Added a default `git config --global user.name/user.email` to `docker-sandbox/Dockerfile`, and added error logging to `commit_task()` so a future commit failure surfaces in `run.log` instead of being swallowed.
+  - After all three fixes, reran the same two test tasks: the file-creating task committed cleanly under the new `claude-sandbox <claude-sandbox@localhost>` identity with the expected file in the diff.
+
 ### Changed
 
 - Retested the native macOS sandbox's `network.allowedDomains`/`deniedDomains` gap against Claude Code v2.1.200 (up from v2.1.198 at the original 2026-07-02 finding).
