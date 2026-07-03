@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en" data-theme="luxury">
+<head>
+<meta charset="UTF-8">
+<title>How git worktrees & branches work</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    securityLevel: "strict",
+    gitGraph: { mainBranchName: "your-branch" },
+  });
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex) > * { min-width: 0; }
+  :where(p, li, td, th, .badge, .label, code) { overflow-wrap: anywhere; }
+  :where(img, svg, video, canvas, iframe) { max-width: 100%; height: auto; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+</style>
+</head>
+<body class="min-h-screen bg-base-200">
+<main class="mx-auto max-w-5xl p-6 lg:p-10 space-y-10">
+
+  <!-- HERO -->
+  <section class="hero bg-base-100 rounded-box shadow-sm">
+    <div class="hero-content flex-col text-center py-10">
+      <div class="badge badge-soft badge-primary mb-3">git, from first principles</div>
+      <h1 class="text-4xl font-bold">How worktrees &amp; branches actually work</h1>
+      <p class="max-w-2xl mt-3 text-base-content/70">
+        Built entirely from the <code class="mono">overnight-queue</code> run you just watched in your own repo &mdash;
+        every commit, branch, and cleanup step below is the real thing that happened, not a made-up example.
+      </p>
+    </div>
+  </section>
+
+  <!-- SECTION 1: three ideas -->
+  <section>
+    <h2 class="text-2xl font-bold mb-1">Three ideas you need before any of this makes sense</h2>
+    <p class="text-base-content/60 mb-4">Everything else on this page is just combinations of these three things.</p>
+    <div class="grid sm:grid-cols-3 gap-4">
+      <div class="card card-border bg-base-100">
+        <div class="card-body">
+          <span class="badge badge-outline badge-sm mb-2">1</span>
+          <h3 class="card-title text-lg">Commit</h3>
+          <p class="text-sm text-base-content/70">
+            A permanent, numbered snapshot of your files. Once made, it never changes &mdash; e.g.
+            <span class="badge badge-ghost mono">90c6c61</span> is the exact snapshot after
+            <code class="mono">HELLO.md</code> was added.
+          </p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-100">
+        <div class="card-body">
+          <span class="badge badge-outline badge-sm mb-2">2</span>
+          <h3 class="card-title text-lg">Branch</h3>
+          <p class="text-sm text-base-content/70">
+            <strong>Not a copy of your files.</strong> Just a movable sticky note with a name on it, pointing at
+            one commit. Making a new commit just moves that branch's sticky note forward.
+          </p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-100">
+        <div class="card-body">
+          <span class="badge badge-outline badge-sm mb-2">3</span>
+          <h3 class="card-title text-lg">HEAD</h3>
+          <p class="text-sm text-base-content/70">
+            A pointer to whichever branch you currently have checked out &mdash; in other words, what your
+            working folder shows you <em>right now</em>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 2: the normal rule -->
+  <section>
+    <h2 class="text-2xl font-bold mb-3">The rule git normally enforces</h2>
+    <div role="alert" class="alert alert-soft">
+      <span>
+        <strong>One repo &rarr; one working folder &rarr; one branch checked out at a time.</strong>
+        If you <code class="mono">git checkout other-branch</code>, the files on disk in your project folder
+        change to match it. Only one branch's files can be sitting in your folder at once.
+      </span>
+    </div>
+  </section>
+
+  <!-- SECTION 3: the problem + worktree diagram -->
+  <section>
+    <h2 class="text-2xl font-bold mb-1">The problem: overnight-queue can't obey that rule</h2>
+    <p class="text-base-content/70 mb-5 max-w-3xl">
+      It needs an AI agent to make file changes and commits <strong>in the background</strong>, without ever
+      touching the branch and files you currently have open. Checking out a different branch in your normal
+      project folder would yank your own files out from under you mid-session. The fix is a
+      <strong>git worktree</strong>: a second, fully independent working folder, checked out on a different
+      branch, sharing the exact same underlying <code class="mono">.git</code> database.
+    </p>
+
+    <div class="grid md:grid-cols-2 gap-6 items-stretch">
+      <div class="card card-border bg-base-100">
+        <div class="card-body">
+          <h3 class="card-title text-base">Your normal checkout</h3>
+          <div class="mockup-code text-xs">
+            <pre data-prefix=""><code>project_template/</code></pre>
+            <pre data-prefix=""><code>├── .git/            &larr; the actual database</code></pre>
+            <pre data-prefix=""><code>├── queue/</code></pre>
+            <pre data-prefix=""><code>├── docker-sandbox/</code></pre>
+            <pre data-prefix=""><code>└── ...your files...</code></pre>
+          </div>
+          <div class="badge badge-primary badge-soft mt-3">checked out on: your-branch</div>
+        </div>
+      </div>
+      <div class="card card-border bg-base-100">
+        <div class="card-body">
+          <h3 class="card-title text-base">The worktree, alongside it</h3>
+          <div class="mockup-code text-xs">
+            <pre data-prefix=""><code>project_template/</code></pre>
+            <pre data-prefix=""><code>├── .git/            &larr; same database, shared</code></pre>
+            <pre data-prefix=""><code>└── .worktrees/</code></pre>
+            <pre data-prefix=""><code>    └── overnight-queue/</code></pre>
+            <pre data-prefix=""><code>        ├── .git       &larr; pointer file, not real folder</code></pre>
+            <pre data-prefix=""><code>        └── ...a second full copy...</code></pre>
+          </div>
+          <div class="badge badge-secondary badge-soft mt-3">checked out on: overnight-queue/&lt;timestamp&gt;</div>
+        </div>
+      </div>
+    </div>
+    <p class="text-sm text-base-content/60 mt-3">
+      Both folders are real, both are fully usable at the same time &mdash; but there is still only <em>one</em>
+      <code class="mono">.git</code> database underneath them both. Commits made in the worktree are just as
+      real and permanent as commits made in your normal folder.
+    </p>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 4: steps -->
+  <section>
+    <h2 class="text-2xl font-bold mb-1">What actually happened in your run</h2>
+    <p class="text-base-content/60 mb-5">
+      From <code class="mono">/overnight-queue run until +5 minutes</code> to the commit landing.
+    </p>
+    <ul class="steps steps-vertical w-full">
+      <li class="step step-primary" data-content="1">
+        <div class="text-left ml-3 pb-6">
+          <strong>A new branch was created:</strong> <span class="badge badge-ghost mono">overnight-queue/20260703-132856</span>,
+          pointing at whatever commit was <code class="mono">HEAD</code> at that moment
+          (<span class="badge badge-ghost mono">56b6192</span>).
+        </div>
+      </li>
+      <li class="step step-primary" data-content="2">
+        <div class="text-left ml-3 pb-6">
+          <strong>A worktree was created:</strong> a second checkout at <code class="mono">.worktrees/overnight-queue/</code>,
+          checked out on that brand-new branch &mdash; your own project folder was never touched.
+        </div>
+      </li>
+      <li class="step step-primary" data-content="3">
+        <div class="text-left ml-3 pb-6">
+          <strong>Claude ran <code class="mono">hello.md</code>'s instructions inside that worktree</strong>,
+          creating <code class="mono">HELLO.md</code> there &mdash; only in the worktree, nowhere else.
+        </div>
+      </li>
+      <li class="step step-primary" data-content="4">
+        <div class="text-left ml-3 pb-6">
+          <strong><code class="mono">commit_task()</code> ran <code class="mono">git add -A &amp;&amp; git commit</code>
+          inside the worktree</strong>, creating commit <span class="badge badge-ghost mono">90c6c61</span>
+          on the <code class="mono">overnight-queue/20260703-132856</code> branch.
+        </div>
+      </li>
+      <li class="step step-primary" data-content="5">
+        <div class="text-left ml-3 pb-6">
+          <code class="mono">hello.md</code> moved to <code class="mono">queue/done/</code>, the queue was empty,
+          so the run exited immediately instead of waiting out the rest of the 5 minutes.
+        </div>
+      </li>
+      <li class="step" data-content="6">
+        <div class="text-left ml-3">
+          <strong>Cleanup</strong> removed the worktree folder and deleted the branch pointer &mdash;
+          covered in detail below.
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <!-- SECTION 5: git graph -->
+  <section>
+    <h2 class="text-2xl font-bold mb-1">The same story, as a commit graph</h2>
+    <p class="text-base-content/60 mb-4">
+      In your actual repo the branch is currently named <code class="mono">Make_overnight-queue_agent_agnostic</code>
+      (renamed by a separate session) &mdash; labeled <code class="mono">your-branch</code> below for clarity.
+      The mechanics are identical regardless of what it's called.
+    </p>
+    <div class="card card-border bg-base-100">
+      <div class="card-body overflow-x-auto">
+        <pre class="mermaid">
+gitGraph
+   commit id: "0a4ed82"
+   commit id: "ab1de76"
+   commit id: "56b6192"
+   branch overnight-queue/timestamp
+   commit id: "90c6c61 (HELLO.md)"
+   checkout your-branch
+        </pre>
+      </div>
+    </div>
+    <p class="text-sm text-base-content/60 mt-3">
+      Notice <code class="mono">your-branch</code> never moved past <code class="mono">56b6192</code>.
+      The new commit only exists on the side branch &mdash; that's the whole point: your branch was never touched.
+    </p>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 6: inspect it yourself -->
+  <section>
+    <h2 class="text-2xl font-bold mb-4">How to inspect any of this yourself</h2>
+    <div class="space-y-5">
+      <div>
+        <p class="text-sm mb-1 text-base-content/70">See every branch that exists:</p>
+        <div class="mockup-code text-xs">
+          <pre data-prefix="$"><code>git branch -a</code></pre>
+          <pre data-prefix=">"><code>* Make_overnight-queue_agent_agnostic</code></pre>
+          <pre data-prefix=">"><code>  main</code></pre>
+          <pre data-prefix=">"><code>  remotes/origin/main</code></pre>
+        </div>
+      </div>
+      <div>
+        <p class="text-sm mb-1 text-base-content/70">See every worktree that exists right now:</p>
+        <div class="mockup-code text-xs">
+          <pre data-prefix="$"><code>git worktree list</code></pre>
+          <pre data-prefix=">"><code>/Users/.../project_template   56b6192 [Make_overnight-queue_agent_agnostic]</code></pre>
+        </div>
+      </div>
+      <div>
+        <p class="text-sm mb-1 text-base-content/70">
+          See a branch's history &mdash; works even after its worktree is deleted, because the commit lives in
+          <code class="mono">.git</code>, not in the worktree folder:
+        </p>
+        <div class="mockup-code text-xs">
+          <pre data-prefix="$"><code>git log --oneline overnight-queue/20260703-132856</code></pre>
+          <pre data-prefix=">"><code>90c6c61 hello.md: completed by overnight-queue</code></pre>
+          <pre data-prefix=">"><code>56b6192 Self-heal stale worktrees and skip pacing sleep...</code></pre>
+        </div>
+      </div>
+      <div>
+        <p class="text-sm mb-1 text-base-content/70">Read a file's exact content on that branch, without checking it out:</p>
+        <div class="mockup-code text-xs">
+          <pre data-prefix="$"><code>git show overnight-queue/20260703-132856:HELLO.md</code></pre>
+          <pre data-prefix=">"><code>hello</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 7: the gotcha -->
+  <section>
+    <h2 class="text-2xl font-bold mb-3">The gotcha you actually hit earlier</h2>
+    <div role="alert" class="alert alert-warning alert-soft">
+      <span>
+        <strong>The worktree's <code class="mono">.git</code> "file" isn't a real git folder &mdash; it's a one-line
+        pointer.</strong> Inside <code class="mono">.worktrees/overnight-queue/.git</code> it just says:
+      </span>
+    </div>
+    <div class="mockup-code text-xs mt-3">
+      <pre data-prefix="$"><code>cat .worktrees/overnight-queue/.git</code></pre>
+      <pre data-prefix=">"><code>gitdir: /workspace/.git/worktrees/overnight-queue</code></pre>
+    </div>
+    <p class="text-sm text-base-content/70 mt-3 max-w-3xl">
+      <code class="mono">/workspace</code> is where the project is mounted <em>inside the Docker container</em>
+      that runs the queue. From your Mac's own terminal, <code class="mono">/workspace</code> doesn't exist &mdash;
+      so any git command run against that worktree directly from the host fails with
+      <code class="mono">fatal: not a git repository</code>. That's exactly the error you saw. The fix wasn't to
+      avoid worktrees &mdash; it was to make <code class="mono">queue-runner.sh</code> check whether an existing
+      worktree is actually still valid before reusing it, and rebuild it if not.
+    </p>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 8: cleanup safety -->
+  <section>
+    <h2 class="text-2xl font-bold mb-3">Why deleting the worktree &amp; branch was safe</h2>
+    <div class="grid sm:grid-cols-2 gap-4 mb-4">
+      <div class="card card-border bg-base-100">
+        <div class="card-body">
+          <h3 class="card-title text-base mono">git worktree remove</h3>
+          <p class="text-sm text-base-content/70">Deletes the second working folder and deregisters it. The
+            <code class="mono">.git</code> database itself &mdash; and every commit already made &mdash; is untouched.</p>
+        </div>
+      </div>
+      <div class="card card-border bg-base-100">
+        <div class="card-body">
+          <h3 class="card-title text-base mono">git branch -D</h3>
+          <p class="text-sm text-base-content/70">Removes the sticky note (the branch name). It does
+            <strong>not</strong> delete the commit it was pointing to &mdash; it just stops pointing at it.</p>
+        </div>
+      </div>
+    </div>
+    <div role="alert" class="alert alert-info alert-soft">
+      <span>
+        A commit stays in <code class="mono">.git</code> as long as <em>something</em> still points to it. Once
+        the last branch pointing to a commit is deleted, it becomes unreachable and git eventually garbage-collects
+        it. For a throwaway test task like <code class="mono">hello.md</code>, that's exactly what you want.
+      </span>
+    </div>
+    <div role="alert" class="alert alert-error alert-soft mt-3">
+      <span>
+        <strong>If a real task's output actually matters,</strong> merge or cherry-pick that branch into
+        <code class="mono">main</code> <em>before</em> deleting it. Delete first, and the commit becomes
+        unreachable &mdash; recoverable only briefly via <code class="mono">git reflog</code>, not something to rely on.
+      </span>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

@@ -42,9 +42,12 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
 # Set `DEVCONTAINER` environment variable to help with orientation
 ENV DEVCONTAINER=true
 
-# Create workspace and config directories and set permissions
-RUN mkdir -p /workspace /home/node/.claude && \
-  chown -R node:node /workspace /home/node/.claude
+# Create workspace and config directories and set permissions.
+# /workspace-gnhf-worktrees is where `gnhf --worktree` creates its per-run
+# worktrees (hardcoded by gnhf as a sibling of the repo root); without this,
+# node has no write access to `/` and gnhf's worktree creation fails.
+RUN mkdir -p /workspace /workspace-gnhf-worktrees /home/node/.claude && \
+  chown -R node:node /workspace /workspace-gnhf-worktrees /home/node/.claude
 
 WORKDIR /workspace
 
@@ -57,8 +60,8 @@ RUN ARCH=$(dpkg --print-architecture) && \
 # Set up non-root user
 USER node
 
-# Default git identity for commits made inside the container (e.g. by
-# overnight-queue's queue-runner.sh). Without this, `git commit` fails with
+# Default git identity for commits made inside the container (e.g. by gnhf,
+# via the autonomous-queue skill). Without this, `git commit` fails with
 # "Author identity unknown" since host git config isn't mounted in.
 RUN git config --global user.name "claude-sandbox" && \
   git config --global user.email "claude-sandbox@localhost"
@@ -90,6 +93,17 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
 # Install Claude
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
+# Install gnhf (github.com/kunchenguid/gnhf) for the autonomous-queue skill.
+ARG GNHF_VERSION=latest
+RUN npm install -g gnhf@${GNHF_VERSION}
+
+# Seed gnhf's config so gnhf-spawned claude processes also use
+# container-settings.json (gnhf has no knowledge of this project's sandbox
+# override otherwise -- see
+# .agents/skills/autonomous-queue/references/design.md). Persists across
+# runs via the gnhf-sandbox-config named volume, same pattern as ~/.claude.
+RUN mkdir -p /home/node/.gnhf
+COPY --chown=node:node gnhf-config.yml /home/node/.gnhf/config.yml
 
 # Copy and set up firewall script
 COPY init-firewall.sh /usr/local/bin/
@@ -104,7 +118,7 @@ USER node
 # bind-mounted /workspace/.claude/settings.json (built for the native macOS sandbox)
 # and refuses to start, since this Linux container has neither bubblewrap nor socat
 # installed. Container-level iptables (init-firewall.sh) and Docker's own filesystem
-# namespace are the enforcement layers here instead; see docker_sandbox_plan.md Section 2.
+# namespace are the enforcement layers here instead.
 # run.sh passes --settings pointing at this file so it applies without touching the
 # host's project settings, which must keep sandbox.enabled=true for native sessions.
 COPY --chown=node:node container-settings.json /home/node/container-settings.json

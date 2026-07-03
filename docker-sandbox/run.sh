@@ -22,6 +22,7 @@ docker run --rm -it \
   --cap-add=NET_RAW \
   -v "$PROJECT_ROOT:/workspace" \
   -v claude-sandbox-config:/home/node/.claude \
+  -v gnhf-sandbox-config:/home/node/.gnhf \
   -e NODE_OPTIONS="--max-old-space-size=4096" \
   -e CLAUDE_CONFIG_DIR="/home/node/.claude" \
   "$IMAGE_NAME" \

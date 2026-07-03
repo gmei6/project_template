@@ -1,0 +1,4 @@
+agentArgsOverride:
+  claude:
+    - --settings
+    - /home/node/container-settings.json

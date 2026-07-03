@@ -1,0 +1,25 @@
+[2026-07-03T21:10:39+00:00] run start: until=indefinite
+[2026-07-03T21:10:40+00:00] failed: hello.md:    gnhf: Command failed: git worktree add -b gnhf/create-a-file-named-7b7098 /workspace-gnhf-worktrees/create-a-file-named-7b7098 Preparing worktree (new branch 'gnhf/create-a-file-named-7b7098') fatal: could not create leading directories of '/workspace-gnhf-worktrees/create-a-file-named-7b7098/.git': Permission denied
+[2026-07-03T21:10:40+00:00] queue empty
+[2026-07-03T21:10:40+00:00] summary: done=0 failed=1
+[2026-07-03T21:10:40+00:00] run end
+[2026-07-03T21:15:20+00:00] run start: until=indefinite
+[2026-07-03T21:16:00+00:00] failed: hello.md:                   git diff --stat 59cb1bbea391..HEAD                   gh pr create    too much        git push no-mistakes:   to review?      https://github.com/kunchenguid/no-mistakes
+[2026-07-03T21:16:00+00:00] queue empty
+[2026-07-03T21:16:00+00:00] summary: done=0 failed=1
+[2026-07-03T21:16:00+00:00] run end
+[2026-07-03T21:23:45+00:00] run start: until=indefinite
+[2026-07-03T21:24:28+00:00] failed: hello.md:                   git diff --stat 59cb1bbea391..HEAD                   gh pr create    too much        git push no-mistakes:   to review?      https://github.com/kunchenguid/no-mistakes
+[2026-07-03T21:24:28+00:00] queue empty
+[2026-07-03T21:24:28+00:00] summary: done=0 failed=1
+[2026-07-03T21:24:28+00:00] run end
+[2026-07-03T21:27:48+00:00] run start: until=indefinite
+[2026-07-03T21:27:59+00:00] failed: hello.md:                   git diff --stat 59cb1bbea391..HEAD                   gh pr create    too much        git push no-mistakes:   to review?      https://github.com/kunchenguid/no-mistakes
+[2026-07-03T21:27:59+00:00] queue empty
+[2026-07-03T21:27:59+00:00] summary: done=0 failed=1
+[2026-07-03T21:27:59+00:00] run end
+[2026-07-03T21:30:39+00:00] run start: until=indefinite
+[2026-07-03T21:30:48+00:00] done: hello.md
+[2026-07-03T21:30:48+00:00] queue empty
+[2026-07-03T21:30:48+00:00] summary: done=1 failed=0
+[2026-07-03T21:30:48+00:00] run end
