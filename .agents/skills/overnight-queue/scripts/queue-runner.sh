@@ -59,6 +59,16 @@ setup_worktree() {
   if ! git -C "$PROJECT_ROOT" rev-parse HEAD >/dev/null 2>&1; then
     git -C "$PROJECT_ROOT" commit --allow-empty -m "overnight-queue: bootstrap initial commit" >>"$LOG" 2>&1
   fi
+  # A worktree directory can exist on disk while being unregistered/stale --
+  # e.g. a host-side `git worktree remove` can't fully resolve a worktree
+  # whose .git file was written by this container (absolute container path),
+  # leaving the checkout behind with a dangling gitdir. Detect that and
+  # rebuild rather than reusing a broken checkout.
+  if [ -d "$WORKTREE_DIR" ] && ! git -C "$WORKTREE_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+    log "setup_worktree: found stale/broken worktree at $WORKTREE_DIR, rebuilding"
+    rm -rf "$WORKTREE_DIR"
+    git -C "$PROJECT_ROOT" worktree prune >>"$LOG" 2>&1
+  fi
   if [ ! -d "$WORKTREE_DIR" ]; then
     git -C "$PROJECT_ROOT" worktree add "$WORKTREE_DIR" -b "$BRANCH" >>"$LOG" 2>&1
   fi
@@ -170,8 +180,15 @@ primary_phase() {
       log "primary: $task_name failed: $(printf '%s' "$ATTEMPT_OUTPUT" | tail -n5 | tr '\n' ' ')"
     fi
 
+    # Only pace with a sleep if there's still primary work left; otherwise
+    # the next loop iteration's "queue empty" check would just be waiting
+    # out the clock for no reason.
     local remaining=$(( target - elapsed ))
-    [ "$remaining" -gt 0 ] && sleep "$remaining"
+    local still_pending
+    still_pending=$(find "$QUEUE_DIR" -maxdepth 1 -name '*.md' -type f | grep -c . || true)
+    if [ "$remaining" -gt 0 ] && [ "$still_pending" -gt 0 ]; then
+      sleep "$remaining"
+    fi
   done
 }
 
@@ -263,8 +280,18 @@ $prior_error"
       fi
     fi
 
+    # Only pace with a sleep if something retryable is still left; otherwise
+    # the next loop iteration's "nothing left retryable" check would just be
+    # waiting out the clock for no reason.
     local remaining=$(( target - elapsed ))
-    [ "$remaining" -gt 0 ] && sleep "$remaining"
+    local still_retryable=0
+    for f in "$FAILED_DIR"/*.md; do
+      [ -e "$f" ] || continue
+      [ "$(attempt_count "$f")" -lt "$MAX_RETRIES" ] && still_retryable=1 && break
+    done
+    if [ "$remaining" -gt 0 ] && [ "$still_retryable" -eq 1 ]; then
+      sleep "$remaining"
+    fi
   done
 }
 

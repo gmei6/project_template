@@ -24,7 +24,7 @@ Both are used together, one inside the other.
 Claude Code does not currently expose a documented pre-call quota API or documented per-invocation usage fields, so pacing cannot rely on watching the actual 5-hour usage window directly.
 Instead, `target_seconds_per_task = (deadline - now) / count(remaining tasks)` is recomputed at the top of every loop iteration, in both the primary and secondary phases.
 This spreads whatever is left evenly across whatever time remains and self-corrects as tasks run faster or slower than average.
-If a task finishes before its share of the budget, the runner sleeps out the remainder before starting the next one.
+If a task finishes before its share of the budget, the runner sleeps out the remainder before starting the next one -- but only if there is a next one: if that task was the last thing pending in its phase (primary queue empty, or nothing left retryable in secondary), the runner skips the sleep and exits right away rather than idling out the rest of `--until` for no reason.
 
 `--output-format json` is still requested from `claude -p` and logged, since it may carry cost/usage fields, but the exact field names are unconfirmed as of this writing.
 Parse them defensively with `jq` (missing fields should not fail the run) rather than relying on names not confirmed against a live invocation.
