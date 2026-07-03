@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="luxury">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6_22_template - Current State</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.15.0/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "base", securityLevel: "strict" });
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex, .layout-grid, .layout-flex) > *,
+  :where([style*="display: grid"], [style*="display:grid"], [style*="display: flex"], [style*="display:flex"]) > * {
+    min-width: 0;
+  }
+  :where(p, h1, h2, h3, h4, h5, h6, li, dd, blockquote, figcaption, td, th, .badge, .label) {
+    overflow-wrap: anywhere;
+  }
+  :where(img, svg, video, canvas, iframe) {
+    max-width: 100%;
+    height: auto;
+  }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+</style>
+</head>
+<body class="bg-base-200">
+<main class="mx-auto max-w-6xl p-6 lg:p-10 space-y-8">
+
+  <section class="hero bg-base-100 rounded-box shadow">
+    <div class="hero-content flex-col text-center py-10">
+      <h1 class="text-4xl font-bold">What's actually in 6_22_template right now</h1>
+      <p class="max-w-2xl text-base-content/70 mt-2">
+        A four-skill Claude Code scaffold, two root instruction files (AGENTS.md with real house-style rules,
+        CLAUDE.md now pointing to it), and one 753-line blueprint describing a much larger
+        "human-agent collaboration template" - almost none of which has been built yet.
+      </p>
+    </div>
+  </section>
+
+  <section class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-100">
+    <div class="stat">
+      <div class="stat-title">Real files/dirs at root</div>
+      <div class="stat-value text-primary">6</div>
+      <div class="stat-desc">.agents/, .claude/, AGENTS.md, CLAUDE.md, implementation_plan.md, skills-lock.json</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Skills installed</div>
+      <div class="stat-value text-secondary">4</div>
+      <div class="stat-desc">session-start, session-wrapup, skill-creator, lavish</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Blueprint components</div>
+      <div class="stat-value">~14</div>
+      <div class="stat-desc">named in implementation_plan.md, not yet created</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Git repository?</div>
+      <div class="stat-value text-error">No</div>
+      <div class="stat-desc">no .git/ detected</div>
+    </div>
+  </section>
+
+  <section class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h2 class="card-title">How the skills scaffold interacts</h2>
+      <p class="text-base-content/70 text-sm mb-2">
+        The overview only - see the table below for what each real file/skill actually does.
+      </p>
+      <div class="overflow-x-auto">
+        <pre class="mermaid">
+flowchart TD
+  CC["Claude Code\n(this agent)"]
+  CS["/.claude/skills/*\n(4 symlinks - what Claude Code actually scans)"]
+  AS["/.agents/skills/*\n(real files - canonical source)"]
+  SET["/.claude/settings.json\nenv.LAVISH_AXI_TELEMETRY=0"]
+  LAV["lavish skill\n(shells out to lavish-axi CLI)"]
+  SC["skill-creator skill"]
+  LOCK["skills-lock.json\n(tracks npx-installed skills only)"]
+  AGENTSMD["AGENTS.md (root)\nGary's house style rules"]
+  CLAUDEMD["CLAUDE.md (root)\npoints to AGENTS.md"]
+  PLAN["implementation_plan.md\n753 lines, unbuilt blueprint"]
+  UNBUILT["14 planned files/dirs\nGEMINI.md, AGENT.md, PROJECT_TRACKER.md,\nPROPOSALS_QUEUE.md, proposals/, knowledge/,\nrules/, src/, tests/, README.md, LICENSE, .gitignore ..."]
+
+  CC -->|reads skills via| CS
+  CS -->|symlinked to| AS
+  CC -->|shell env from| SET
+  SET -->|applies to| LAV
+  AS -->|includes| LAV
+  AS -->|includes| SC
+  SC -.->|scaffolds new pairs into both| CS
+  LOCK -->|"tracks (only)"| LAV
+  PLAN -->|specifies, not yet built| UNBUILT
+  AGENTSMD -.->|informal precursor of| PLAN
+  CLAUDEMD -->|points to| AGENTSMD
+        </pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid gap-4 md:grid-cols-2">
+    <div role="alert" class="alert alert-warning alert-vertical items-start">
+      <span class="font-semibold">Blueprint vs. reality gap</span>
+      <span class="text-sm">
+        <code class="mono">implementation_plan.md</code> (root) specifies a much larger structure - pointer files
+        (<code class="mono">GEMINI.md</code>, <code class="mono">AGENT.md</code>), a project tracker, a proposal
+        queue with a no-direct-edit workflow, an "Operator Knowledge Format" bundle under
+        <code class="mono">knowledge/</code>, style rule placeholders under <code class="mono">rules/</code>, and a
+        sample app + tests under <code class="mono">src/</code> / <code class="mono">tests/</code>. None of these
+        exist on disk yet - only the skills scaffold and this plan document itself do.
+        <span class="opacity-70">(implementation_plan.md, lines 7-66)</span>
+      </span>
+    </div>
+    <div role="alert" class="alert alert-info alert-vertical items-start">
+      <span class="font-semibold">The "Canary Protocol" is partially live already</span>
+      <span class="text-sm">
+        The blueprint's <code class="mono">AGENT.md</code> §1 "Canary Protocol" requires every agent message to
+        start with <code class="mono">Gary -</code> and follow specific style rules. That hasn't been built as
+        <code class="mono">AGENT.md</code> yet, but the real root <code class="mono">AGENTS.md</code> already
+        carries this exact rule (plus a no-em-dash rule) informally.
+        <span class="opacity-70">(implementation_plan.md ~line 110; AGENTS.md)</span>
+        <span class="block mt-1 font-medium">Resolved in review: confirmed - now following this rule (message
+        prefix + no em dash) starting with this session's replies.</span>
+      </span>
+    </div>
+  </section>
+
+  <section class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h2 class="card-title">What's actually on disk</h2>
+      <div class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
+        <table class="table table-zebra">
+          <thead>
+            <tr><th>Item</th><th>Real content?</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">AGENTS.md</td>
+              <td><span class="badge badge-soft badge-success">yes</span></td>
+              <td>Gary's house style: dash style, "Gary -" message prefix, commit rules, engineering standards</td>
+            </tr>
+            <tr>
+              <td class="mono">CLAUDE.md</td>
+              <td><span class="badge badge-soft badge-success">yes</span></td>
+              <td>One-line pointer: "See AGENTS.md for agent instructions."</td>
+            </tr>
+            <tr>
+              <td class="mono">implementation_plan.md</td>
+              <td><span class="badge badge-soft badge-success">yes</span></td>
+              <td>753-line blueprint for the full template repo (unbuilt)</td>
+            </tr>
+            <tr>
+              <td class="mono">skills-lock.json</td>
+              <td><span class="badge badge-soft badge-success">yes</span></td>
+              <td>Tracks skills installed via <code class="mono">npx skills</code> - currently just <code class="mono">lavish</code></td>
+            </tr>
+            <tr>
+              <td class="mono">.claude/settings.json</td>
+              <td><span class="badge badge-soft badge-success">yes</span></td>
+              <td>Project env config - <code class="mono">LAVISH_AXI_TELEMETRY=0</code> applied to every shell command in this project</td>
+            </tr>
+            <tr>
+              <td class="mono">.agents/skills/session-start</td>
+              <td><span class="badge badge-soft badge-warning">stub</span></td>
+              <td>Empty <code class="mono">name</code>/<code class="mono">description</code> frontmatter - harness-managed placeholder</td>
+            </tr>
+            <tr>
+              <td class="mono">.agents/skills/session-wrapup</td>
+              <td><span class="badge badge-soft badge-warning">stub</span></td>
+              <td>Same as above</td>
+            </tr>
+            <tr>
+              <td class="mono">.agents/skills/skill-creator</td>
+              <td><span class="badge badge-soft badge-success">yes</span></td>
+              <td>Meta-skill: scaffolds new skills into the <code class="mono">.agents/</code> + <code class="mono">.claude/</code> symlink pair</td>
+            </tr>
+            <tr>
+              <td class="mono">.agents/skills/lavish</td>
+              <td><span class="badge badge-soft badge-success">yes</span></td>
+              <td>This skill - installed from kunchenguid/lavish-axi, manually edited to add a dashboard-check step</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "skills": {
+    "lavish": {
+      "source": "kunchenguid/lavish-axi",
+      "sourceType": "github",
+      "skillPath": "skills/lavish/SKILL.md",
+      "computedHash": "c3a0299d820bc3b30613d7740718b194511201319047fa9d3075e0ab1e596bde",
+      "localModifications": [
+        {
+          "date": "2026-07-02",
+          "description": "Added a workflow step that checks the lavish-axi dashboard for open sessions before creating a new artifact (see CHANGELOG.md)."
+        },
+        {
+          "date": "2026-07-02",
+          "description": "Replaced all npx -y lavish-axi invocations with direct lavish-axi calls, since lavish-axi is installed globally on this machine. Removes the npm-registry network dependency needed by the sandboxed auto-mode setup (see sandbox_automode_plan.md)."
+        }
+      ],
+      "warning": "computedHash reflects the original upstream sync and is known to no longer match this file on disk. Do not overwrite this file from upstream without reviewing localModifications first."
+    }
+  }
+}

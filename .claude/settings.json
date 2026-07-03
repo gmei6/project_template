@@ -1,0 +1,27 @@
+{
+  "env": {
+    "LAVISH_AXI_TELEMETRY": "0"
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
+    "failIfUnavailable": true,
+    "excludedCommands": [],
+    "filesystem": {
+      "allowWrite": [],
+      "denyRead": ["~/"],
+      "allowRead": ["."]
+    },
+    "network": {
+      "allowedDomains": [],
+      "deniedDomains": []
+    },
+    "credentials": {
+      "files": [
+        { "path": "~/.ssh", "mode": "deny" }
+      ],
+      "envVars": []
+    }
+  }
+}
