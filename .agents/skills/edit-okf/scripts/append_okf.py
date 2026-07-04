@@ -6,18 +6,26 @@ def append_to_file(filepath, content):
     
     # Check if file exists and has content to manage newlines
     needs_newline = False
-    if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
+    file_exists = os.path.exists(filepath)
+    if file_exists and os.path.getsize(filepath) > 0:
         with open(filepath, 'rb') as f:
             f.seek(-1, os.SEEK_END)
             if f.read(1) != b'\n':
                 needs_newline = True
                 
-    with open(filepath, 'a') as f:
-        if needs_newline:
-            f.write('\n')
-        f.write(content)
-        if not content.endswith('\n'):
-            f.write('\n')
+    if file_exists:
+        os.chmod(filepath, 0o644)
+        
+    try:
+        with open(filepath, 'a') as f:
+            if needs_newline:
+                f.write('\n')
+            f.write(content)
+            if not content.endswith('\n'):
+                f.write('\n')
+    finally:
+        if os.path.exists(filepath):
+            os.chmod(filepath, 0o444)
             
     print(f"Successfully appended content to {filepath}")
 
