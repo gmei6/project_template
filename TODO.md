@@ -15,14 +15,14 @@ Key decisions so far:
 
 ### Next steps
 
-- [ ] `okf/references/` - same lean treatment as decisions/ and changes/ (index.md, no example).
-- [ ] `okf/identity.md` and `okf/north-star.md` (kept as two separate concepts, not merged - confirmed via the cascade-model example that North Star carries substantial standalone content).
-- [ ] `okf/model/` directory (network-and-channels.md, notation-and-parameters.md, forks.md).
-- [ ] `okf/benchmark.md`.
-- [ ] `okf/architecture/` directory (stack.md, repo-layout.md, reproducibility.md, definition-of-done.md).
-- [ ] `okf/roadmap.md`, `okf/risks.md`.
-- [ ] Live-state files: `okf/status.md`, `okf/open-questions.md`, `okf/next-actions.md`.
-- [ ] Root `okf/index.md` tying the bundle together (session-start reading order, links to every top-level section/directory).
+- [x] `okf/references/` - same lean treatment as decisions/ and changes/ (index.md, no example).
+- [x] `okf/identity.md` and `okf/north-star.md` (kept as two separate concepts, not merged - confirmed via the cascade-model example that North Star carries substantial standalone content).
+- [x] `okf/model/` directory (network-and-channels.md, notation-and-parameters.md, forks.md).
+- [x] `okf/benchmark.md`.
+- [x] `okf/architecture/` directory (stack.md, repo-layout.md, reproducibility.md, definition-of-done.md).
+- [x] `okf/roadmap.md`, `okf/risks.md`.
+- [x] Live-state files: `okf/status.md`, `okf/open-questions.md`, `okf/next-actions.md`.
+- [x] Root `okf/index.md` tying the bundle together (session-start reading order, links to every top-level section/directory).
 - [ ] Build the actual "edit-okf" skill per `okf_skill_plan.md` once the full bundle shape is settled.
 
 ## Fill in real content for `session-start` and `session-wrapup` skills
