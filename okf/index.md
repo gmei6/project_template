@@ -1,5 +1,6 @@
 ---
 mutability: live
+type: index
 ---
 
 # Open Knowledge Format (OKF)
