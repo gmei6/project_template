@@ -1,1 +1,5 @@
+---
+mutability: append-only
+---
+
 # Log
