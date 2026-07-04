@@ -18,7 +18,7 @@ Use this skill's logic when starting a session, ending a session, or anytime you
 2. **Respect Mutability Frontmatter on Concept Files**:
    - `mutability: frozen`: Requires a decision file (`decisions/d-NNN.md`) explaining the change *before* editing. Then, make a minimal edit, and link the concept to the decision (and vice versa). Do not silently edit frozen files.
    - `mutability: live`: Can be overwritten freely to reflect the current state.
-   - `mutability: append-only`: Add new entries only at the bottom. Never edit prior entries.
+   - `mutability: append-only`: Add new entries only at the bottom. **CRITICAL**: You are strictly forbidden from using text editing tools to directly edit append-only files (e.g., `okf/log.md`, `changes/`, `decisions/`). You MUST use the provided Python script to append content: `python .agents/skills/edit-okf/scripts/append_okf.py <filepath> "<content>"` or pipe content into it. Never edit prior entries.
 
 3. **Keep index.md Synchronized**:
    - Every `index.md` must follow the OKF spec exactly: one or more `#` section headings, each followed by a flat bullet list of `[Title](relative-path) - short description`.
