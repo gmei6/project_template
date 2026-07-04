@@ -23,7 +23,7 @@ Key decisions so far:
 - [x] `okf/roadmap.md`, `okf/risks.md`.
 - [x] Live-state files: `okf/status.md`, `okf/open-questions.md`, `okf/next-actions.md`.
 - [x] Root `okf/index.md` tying the bundle together (session-start reading order, links to every top-level section/directory).
-- [ ] Build the actual "edit-okf" skill per `okf_skill_plan.md` once the full bundle shape is settled.
+- [x] Build the actual "edit-okf" skill per `okf_skill_plan.md` once the full bundle shape is settled.
 
 ## Fill in real content for `session-start` and `session-wrapup` skills
 
@@ -35,3 +35,15 @@ They were created intentionally as structure-only stubs, but as written they don
 - [x] Decide what `session-start` should actually do, for example loading `AGENTS.md` conventions or checking the `lavish-axi` dashboard for open sessions, then draft it with the `skill-creator` skill.
 - [x] Decide what `session-wrapup` should actually do, for example updating `CHANGELOG.md` or checking for stray artifacts, then draft it the same way.
 - [x] Drop the empty `scripts`/`references`/`assets` folders under each if the finished skill doesn't end up needing them.
+
+## Verify the `autonomous-queue` skill's multi-task loop and failure path
+
+Goal: `overnight-queue` was replaced with a `gnhf`-backed `autonomous-queue` skill and verified end to end against a single trivial task, with three live bugs found and fixed along the way (a worktree permission gap, cross-skill leakage into `no-mistakes`, and a missing `--stop-when` causing fake failures).
+Full summary of decisions, what was built, and the bugs found in `autonomous_queue_summary.md`.
+
+### Next steps
+
+- [ ] Seed two tasks (one trivial, one deliberately impossible) and confirm the multi-task loop advances correctly from a resolved task to the next pending one - only ever tested with a single task in the queue so far.
+- [ ] Confirm a genuinely failing task still lands in `queue/failed/` under the corrected `"before: stop condition met"` success-detection logic, which so far has only ever been exercised by a real success or by the now-fixed false-failure bugs, never an intended failure.
+- [ ] Lower priority: test `--until` with a real deadline, only `indefinite` has been run.
+- [ ] Lower priority: test the rate-limit backoff path, untested since it is hard to trigger deliberately.
