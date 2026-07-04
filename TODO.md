@@ -32,6 +32,6 @@ They were created intentionally as structure-only stubs, but as written they don
 
 ### Next steps
 
-- [ ] Decide what `session-start` should actually do, for example loading `AGENTS.md` conventions or checking the `lavish-axi` dashboard for open sessions, then draft it with the `skill-creator` skill.
-- [ ] Decide what `session-wrapup` should actually do, for example updating `CHANGELOG.md` or checking for stray artifacts, then draft it the same way.
-- [ ] Drop the empty `scripts`/`references`/`assets` folders under each if the finished skill doesn't end up needing them.
+- [x] Decide what `session-start` should actually do, for example loading `AGENTS.md` conventions or checking the `lavish-axi` dashboard for open sessions, then draft it with the `skill-creator` skill.
+- [x] Decide what `session-wrapup` should actually do, for example updating `CHANGELOG.md` or checking for stray artifacts, then draft it the same way.
+- [x] Drop the empty `scripts`/`references`/`assets` folders under each if the finished skill doesn't end up needing them.
